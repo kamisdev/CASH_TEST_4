@@ -97,8 +97,8 @@ fn input_payment(price_origin: f64) -> (f64, usize) {
     (price_input, tried_cnt)
 }
 
-fn calculate_coin_amount(price_change: f64, cash_box: &HashMap<usize, i32>) -> (bool, HashMap<usize, i32>) {
-    let coin_array = [2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
+fn calculate_coin_amount(price_change: f64, cash_box: &HashMap<usize, i32>, coin_array: Vec<f64>) -> (bool, HashMap<usize, i32>) {
+    // let coin_array = [2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
     let mut sorted_cash_box: Vec<_> = cash_box.iter().collect();
     sorted_cash_box.sort_by(|a, b| b.0.cmp(a.0));
 
@@ -290,6 +290,27 @@ fn input_product_number(limit: usize) -> usize {
     product_no
 }
 
+fn input_usable_coin() -> Vec<f64> {
+    let mut str_input = String::new();
+
+    let mut result = Vec::new();
+
+    io::stdin()
+        .read_line(&mut str_input)
+        .expect("Failed to read line");
+    
+    let v: Vec<&str> = str_input.split(' ').collect();
+    for str_number in v {
+        let num: f64 = match str_number.trim().parse() {
+            Ok(a) => a,
+            Err(_) => continue,
+        };
+        result.push(num);
+    }
+
+    result
+}
+
 fn main() {
 
     let coin_array = [2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
@@ -317,14 +338,16 @@ fn main() {
         let product_name = String::from(selected_product.product_name.as_str());
         println!("You selected {} : {} : {}", product_no, product_name, price_origin);
         println!("------------------------------------------------------");
-
     
         let (price_input, tried_cnt) = input_payment(price_origin);
 
         let price_change = price_input - price_origin;
+
+        let usable_coin = input_usable_coin();
+
         println!("Change is {:.2}", price_change);
 
-        let (possibility, result) = calculate_coin_amount(price_change, &cash_box);
+        let (possibility, result) = calculate_coin_amount(price_change, &cash_box, usable_coin);
         println!("{possibility}");
 
         for (key, value) in result {
