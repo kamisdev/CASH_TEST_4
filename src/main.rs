@@ -249,8 +249,27 @@ fn input_product_number(limit: usize) -> usize {
         io::stdin()
             .read_line(&mut str_input)
             .expect("Failed to read line");
+
+        // check if input 'q'
+        let pp = str_input.as_bytes();
+        if pp[0] == b'q' {
+            println!("Do you really want to exit? y/n");
+
+            // confirm quit
+            str_input = String::from("");
+            io::stdin()
+                .read_line(&mut str_input)
+                .expect("Cannot read line");
+            
+            let pp = str_input.as_bytes();
+            if pp[0] == b'y' {
+                process::exit(1);
+            } else {
+                continue;
+            }
+        }
         
-            product_no = match str_input.trim().parse() {
+        product_no = match str_input.trim().parse() {
             Ok(num) => {
                 if num > limit || num < 1 {
                     println!("{} Error: Input Correct Number", str_input);
@@ -286,19 +305,20 @@ fn main() {
     println!("------------------------------------------------------");
 
     let product_list = generate_product_list(10);
-    for product in &product_list {
-        println!("{} : {} : {}", product.product_no, product.product_name, product.product_price);
-    }
-    println!("Please input product number : ");
-    let product_no = input_product_number(10);
-
-    let selected_product = product_list.get(product_no - 1).unwrap();
-    let price_origin = selected_product.product_price;
-    let product_name = String::from(selected_product.product_name.as_str());
-    println!("You selected {} : {} : {}", product_no, product_name, price_origin);
-    println!("------------------------------------------------------");
-
     loop {
+        for product in &product_list {
+            println!("{} : {} : {}", product.product_no, product.product_name, product.product_price);
+        }
+        println!("Please input product number : ");
+        let product_no = input_product_number(10);
+
+        let selected_product = product_list.get(product_no - 1).unwrap();
+        let price_origin = selected_product.product_price;
+        let product_name = String::from(selected_product.product_name.as_str());
+        println!("You selected {} : {} : {}", product_no, product_name, price_origin);
+        println!("------------------------------------------------------");
+
+    
         let (price_input, tried_cnt) = input_payment(price_origin);
 
         let price_change = price_input - price_origin;
