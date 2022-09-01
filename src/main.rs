@@ -2,9 +2,7 @@ extern crate rand;
 extern crate math;
 
 use rand::{prelude::*, distributions::Alphanumeric};
-use std::hash::Hasher;
 use std::io;
-use std::ops::Add;
 use math::round;
 use std::process;
 use std::convert::From;
@@ -72,7 +70,6 @@ fn input_payment(price_origin: f64) -> (f64, usize) {
 
                 // check format 000.00
                 let check_pay = round::ceil(pay, 2);
-                println!("{}, {}", check_pay, pay);
                 if check_pay * 100.0 != pay * 100.0 {
                     
                     println!("Invalid input format! Must be format like : 000.00");
@@ -86,19 +83,21 @@ fn input_payment(price_origin: f64) -> (f64, usize) {
                 continue;
             }
         };
+
+        break;
         
-        if compare(price_origin, price_input) {
-            break;
-        }
+        // if compare(price_origin, price_input) {
+        //     break;
+        // }
         
-        println!("Price is not enough! Tried count : {tried_cnt}");
+        // println!("Price is not enough! Tried count : {tried_cnt}");
 
     }
 
     (price_input, tried_cnt)
 }
 
-fn calculate_coin_amount(price_change: f64, cash_box: &mut HashMap<usize, i32>) -> String {
+fn calculate_coin_amount(price_change: f64, cash_box: &HashMap<usize, i32>) -> (bool, HashMap<usize, i32>) {
     let coin_array = [2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
     let mut sorted_cash_box: Vec<_> = cash_box.iter().collect();
     sorted_cash_box.sort_by(|a, b| b.0.cmp(a.0));
@@ -107,15 +106,29 @@ fn calculate_coin_amount(price_change: f64, cash_box: &mut HashMap<usize, i32>) 
 
     let mut cur_index = 0;
 
-    let mut result = String::new();
+    // let mut result = String::new();
+
+    let mut cash_updated = HashMap::new();
+    for (key, value) in cash_box {
+        cash_updated.insert(*key, *value);
+    }
 
     if price_change < 0.0 {
         // need to use coins in cash_box
-    }
+        price_change = round::ceil(0.0 - price_change, 2);
 
-    else {
-        // need to add coins to cash_box
-        while price_change >= 0.0 {
+        while price_change > 0.0 {
+            println!("{price_change}");
+
+            if cur_index > coin_array.len() - 1 && price_change > 0.0 {
+                // initialize cash_updated as cash_box
+                for (key, value) in cash_box {
+                    let count = cash_updated.entry(*key).or_insert(0);
+                    *count = *value;
+                }
+
+                return (false, cash_updated);
+            }
 
             if price_change < coin_array[cur_index] - 0.001 {
                 if cur_index == coin_array.len() - 1 {
@@ -128,24 +141,68 @@ fn calculate_coin_amount(price_change: f64, cash_box: &mut HashMap<usize, i32>) 
             let rest_price = (price_change*100.0) as usize;
             let coin_unit = (coin_array[cur_index]*100.0) as usize;
     
-            let coin_cnt = rest_price / coin_unit;
+            let mut coin_cnt = rest_price / coin_unit;
 
-            let available_cnt = 50 - sorted_cash_box[cur_index].1;
-            if available_cnt > coin_cnt as i32 {
-                let cash_index = (coin_array[cur_index] * 100.0) as usize;
-                cash_box.entry(cash_index).or_insert(0);
+            let available_cnt = *sorted_cash_box[cur_index].1;
+            if available_cnt <= coin_cnt as i32 {
+                coin_cnt = available_cnt as usize;                
             }
+            let count = cash_updated.entry((coin_array[cur_index] * 100.0) as usize).or_insert(0);
+            *count -= coin_cnt as i32;
 
-            result.insert_str(result.len(), format!("{} coin X {coin_cnt}\n", coin_array[cur_index]).as_str());
-            let rest = rest_price % coin_unit;
+            // result.insert_str(result.len(), format!("{} coin X {coin_cnt}\n", coin_array[cur_index]).as_str());
+            let rest = rest_price - coin_cnt * coin_unit;
+            // println!("{}, {}, {}", coin_unit, coin_cnt, rest);
     
             price_change = (rest as f64) / 100.0;
+            cur_index += 1;
         }
     }
 
-    
+    else {
+        // need to add coins to cash_box
+        while price_change > 0.0 {
 
-    return result;
+            if cur_index > coin_array.len() - 1 && price_change > 0.0 {
+                // initialize cash_updated as cash_box
+                for (key, value) in cash_box {
+                    let count = cash_updated.entry(*key).or_insert(0);
+                    *count = *value;
+                }
+
+                return (false, cash_updated);
+            }
+
+            if price_change < coin_array[cur_index] - 0.001 {
+                if cur_index == coin_array.len() - 1 {
+                    break;
+                }
+                cur_index += 1;
+                continue;
+            }
+    
+            let rest_price = (price_change*100.0) as usize;
+            let coin_unit = (coin_array[cur_index]*100.0) as usize;
+    
+            let mut coin_cnt = rest_price / coin_unit;
+
+            let available_cnt = 50 - sorted_cash_box[cur_index].1;
+            if available_cnt <= coin_cnt as i32 {
+                coin_cnt = available_cnt as usize;                
+            }
+            let count = cash_updated.entry((coin_array[cur_index] * 100.0) as usize).or_insert(0);
+            *count += coin_cnt as i32;
+
+            // result.insert_str(result.len(), format!("{} coin X {coin_cnt}\n", coin_array[cur_index]).as_str());
+            let rest = rest_price - coin_cnt * coin_unit;
+            // println!("{}, {}, {}", coin_unit, coin_cnt, rest);
+    
+            price_change = (rest as f64) / 100.0;
+            cur_index += 1;
+        }
+    }
+
+    return (true, cash_updated);
 }
 
 struct Product {
@@ -197,6 +254,7 @@ fn input_product_number(limit: usize) -> usize {
             Ok(num) => {
                 if num > limit || num < 1 {
                     println!("{} Error: Input Correct Number", str_input);
+                    str_input = String::from("");
                     continue;
                 }
                 num
@@ -240,12 +298,21 @@ fn main() {
     println!("You selected {} : {} : {}", product_no, product_name, price_origin);
     println!("------------------------------------------------------");
 
-    let (price_input, tried_cnt) = input_payment(price_origin);
+    loop {
+        let (price_input, tried_cnt) = input_payment(price_origin);
 
-    let price_change = price_input - price_origin;
-    println!("Change is {:.2}", price_change);
+        let price_change = price_input - price_origin;
+        println!("Change is {:.2}", price_change);
 
-    let coins_result = calculate_coin_amount(price_change, &mut cash_box);
-    println!("{coins_result}");
-    println!("------------------------------------------------------");
+        let (possibility, result) = calculate_coin_amount(price_change, &cash_box);
+        println!("{possibility}");
+
+        for (key, value) in result {
+            println!("{:.2} coin : {}", (key as f64) / 100.0, value);
+        }
+        println!("------------------------------------------------------");
+        if possibility {
+            break;
+        }
+    }
 }
